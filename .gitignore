@@ -1,2 +1,3 @@
 onnxruntime*
 CMakeFiles/*
+mteb/results/*
