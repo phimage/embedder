@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <regex>
+#include <thread>
 
 Embedder::Embedder() 
     : env_(ORT_LOGGING_LEVEL_WARNING, "embedder")
@@ -15,8 +16,23 @@ Embedder::Embedder()
     , unk_token_id_(100)
     , verbose_(false) {
     
-    session_options_.SetIntraOpNumThreads(4);
-    session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+    // Configure for optimized CPU performance on Apple Silicon
+    // Use all available performance cores
+    session_options_.SetIntraOpNumThreads(std::thread::hardware_concurrency());
+    session_options_.SetInterOpNumThreads(1); // Avoid thread contention
+    
+    // Enable all CPU optimizations
+    session_options_.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    session_options_.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+    
+    // Apple Silicon specific optimizations
+    session_options_.AddConfigEntry("session.disable_cpu_ep_fallback", "0");
+    session_options_.AddConfigEntry("session.use_env_allocators", "1");
+    
+    if (verbose_) {
+        std::cout << "Optimized CPU execution configured for Apple Silicon" << std::endl;
+        std::cout << "Using " << std::thread::hardware_concurrency() << " threads" << std::endl;
+    }
 }
 
 Embedder::~Embedder() = default;
