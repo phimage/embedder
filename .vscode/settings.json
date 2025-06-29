@@ -33,6 +33,14 @@
         "streambuf": "cpp",
         "string": "cpp",
         "string_view": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "thread": "cpp",
+        "functional": "cpp",
+        "utility": "cpp",
+        "iterator": "cpp",
+        "type_traits": "cpp",
+        "unordered_map": "cpp",
+        "numeric": "cpp",
+        "memory": "cpp"
     }
 }

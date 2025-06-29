@@ -102,32 +102,9 @@ int main(int argc, char* argv[]) {
     Embedder embedder;
     embedder.setVerbose(verbose);
     
-    // Try to find model file (check onnx/model.onnx first, then model.onnx)
-    std::string model_path;
-    std::string onnx_subdir_path = model_dir + "/onnx/model.onnx";
-    std::string direct_path = model_dir + "/model.onnx";
-    
-    if (std::filesystem::exists(onnx_subdir_path)) {
-        model_path = onnx_subdir_path;
-    } else if (std::filesystem::exists(direct_path)) {
-        model_path = direct_path;
-    } else {
-        std::cerr << "Model file not found. Looked for:" << std::endl;
-        std::cerr << "  " << onnx_subdir_path << std::endl;
-        std::cerr << "  " << direct_path << std::endl;
-        return -1;
-    }
-    
-    // Load the ONNX model
-    if (!embedder.loadModel(model_path)) {
-        std::cerr << "Failed to load model from " << model_path << std::endl;
-        return -1;
-    }
-    
-    // Load vocabulary
-    std::string vocab_path = model_dir + "/vocab.txt";
-    if (!embedder.loadTokenizer(vocab_path)) {
-        std::cerr << "Failed to load tokenizer from " << vocab_path << std::endl;
+    // Load model from folder (this will automatically load config files)
+    if (!embedder.loadModelFolder(model_dir)) {
+        std::cerr << "Failed to load model from folder " << model_dir << std::endl;
         return -1;
     }
     

@@ -28,7 +28,7 @@ CMAKE_BUILD_TYPE:STRING=
 CMAKE_COLOR_MAKEFILE:BOOL=ON
 
 //CXX compiler
-CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++
+CMAKE_CXX_COMPILER:STRING=/usr/bin/c++
 
 //Flags used by the CXX compiler during all build types.
 CMAKE_CXX_FLAGS:STRING=
@@ -46,7 +46,7 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
 //C compiler
-CMAKE_C_COMPILER:FILEPATH=/usr/bin/cc
+CMAKE_C_COMPILER:STRING=/usr/bin/cc
 
 //Flags used by the C compiler during all build types.
 CMAKE_C_FLAGS:STRING=
@@ -223,10 +223,10 @@ Embedder_IS_TOP_LEVEL:STATIC=ON
 Embedder_SOURCE_DIR:STATIC=/Users/eric/embedder
 
 //Path to a library.
-ONNXRUNTIME_LIB:FILEPATH=/Users/eric/embedder/onnxruntime-osx-arm64-1.16.3/lib/libonnxruntime.dylib
+ONNXRUNTIME_LIB:FILEPATH=/Users/eric/embedder/onnxruntime-osx-arm64-1.22.0/lib/libonnxruntime.dylib
 
 //Path to a file.
-ONNXRUNTIME_ROOT_PATH:PATH=/Users/eric/embedder/onnxruntime-osx-arm64-1.16.3/.
+ONNXRUNTIME_ROOT_PATH:PATH=/Users/eric/embedder/onnxruntime-osx-arm64-1.22.0/.
 
 
 ########################

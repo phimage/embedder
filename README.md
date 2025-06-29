@@ -38,6 +38,7 @@ Prerequisites:
 - CMake 3.12+
 - ONNX Runtime libraries
 - C++17 compatible compiler
+- https://github.com/nlohmann/json
 
 ```bash
 cmake .
