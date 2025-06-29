@@ -408,3 +408,150 @@ std::string Embedder::detokenize(const std::vector<int>& token_ids) {
     
     return result;
 }
+
+std::vector<std::vector<int>> Embedder::batchTokenize(const std::vector<std::string>& texts) {
+    std::vector<std::vector<int>> batch_tokens;
+    batch_tokens.reserve(texts.size());
+    
+    for (const std::string& text : texts) {
+        batch_tokens.push_back(tokenize(text));
+    }
+    
+    return batch_tokens;
+}
+
+std::vector<std::vector<int>> Embedder::batchEncodeText(const std::vector<std::string>& texts) {
+    std::vector<std::vector<int>> batch_encoded;
+    batch_encoded.reserve(texts.size());
+    
+    for (const std::string& text : texts) {
+        batch_encoded.push_back(encodeText(text));
+    }
+    
+    return batch_encoded;
+}
+
+void Embedder::normalizeBatchEmbeddings(std::vector<std::vector<float>>& embeddings) {
+    for (auto& embedding : embeddings) {
+        normalizeEmbedding(embedding);
+    }
+}
+
+std::vector<std::vector<float>> Embedder::getBatchEmbeddings(const std::vector<std::string>& texts) {
+    if (!session_) {
+        std::cerr << "Model not loaded!" << std::endl;
+        return {};
+    }
+    
+    if (texts.empty()) {
+        return {};
+    }
+    
+    try {
+        size_t batch_size = texts.size();
+        
+        // Encode all texts to token IDs
+        std::vector<std::vector<int>> batch_input_ids = batchEncodeText(texts);
+        
+        // Create attention masks and token type IDs for the entire batch
+        std::vector<std::vector<int>> batch_attention_masks;
+        std::vector<std::vector<int>> batch_token_type_ids;
+        
+        batch_attention_masks.reserve(batch_size);
+        batch_token_type_ids.reserve(batch_size);
+        
+        for (const auto& input_ids : batch_input_ids) {
+            // Create attention mask (1 for real tokens, 0 for padding)
+            std::vector<int> attention_mask(max_sequence_length_);
+            for (size_t i = 0; i < input_ids.size(); ++i) {
+                attention_mask[i] = (input_ids[i] != pad_token_id_) ? 1 : 0;
+            }
+            batch_attention_masks.push_back(attention_mask);
+            
+            // Create token type IDs (all 0s for single sentence)
+            std::vector<int> token_type_ids(max_sequence_length_, 0);
+            batch_token_type_ids.push_back(token_type_ids);
+        }
+        
+        // Flatten the batch data for ONNX tensor creation
+        std::vector<int64_t> flat_input_ids;
+        std::vector<int64_t> flat_attention_mask;
+        std::vector<int64_t> flat_token_type_ids;
+        
+        flat_input_ids.reserve(batch_size * max_sequence_length_);
+        flat_attention_mask.reserve(batch_size * max_sequence_length_);
+        flat_token_type_ids.reserve(batch_size * max_sequence_length_);
+        
+        for (size_t i = 0; i < batch_size; ++i) {
+            for (size_t j = 0; j < max_sequence_length_; ++j) {
+                flat_input_ids.push_back(static_cast<int64_t>(batch_input_ids[i][j]));
+                flat_attention_mask.push_back(static_cast<int64_t>(batch_attention_masks[i][j]));
+                flat_token_type_ids.push_back(static_cast<int64_t>(batch_token_type_ids[i][j]));
+            }
+        }
+        
+        // Create input tensors with batch dimension
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        
+        std::vector<int64_t> input_shape = {static_cast<int64_t>(batch_size), static_cast<int64_t>(max_sequence_length_)};
+        
+        std::vector<Ort::Value> input_tensors;
+        input_tensors.emplace_back(Ort::Value::CreateTensor<int64_t>(
+            memory_info, flat_input_ids.data(), flat_input_ids.size(),
+            input_shape.data(), input_shape.size()));
+        input_tensors.emplace_back(Ort::Value::CreateTensor<int64_t>(
+            memory_info, flat_token_type_ids.data(), flat_token_type_ids.size(),
+            input_shape.data(), input_shape.size()));
+        input_tensors.emplace_back(Ort::Value::CreateTensor<int64_t>(
+            memory_info, flat_attention_mask.data(), flat_attention_mask.size(),
+            input_shape.data(), input_shape.size()));
+        
+        // Run inference
+        std::vector<const char*> input_names_cstr;
+        std::vector<const char*> output_names_cstr;
+        
+        for (const auto& name : input_names_) {
+            input_names_cstr.push_back(name.c_str());
+        }
+        for (const auto& name : output_names_) {
+            output_names_cstr.push_back(name.c_str());
+        }
+        
+        auto output_tensors = session_->Run(Ort::RunOptions{nullptr},
+                                          input_names_cstr.data(), input_tensors.data(), input_tensors.size(),
+                                          output_names_cstr.data(), output_names_cstr.size());
+        
+        // Extract embeddings from output tensor
+        float* output_data = output_tensors[0].GetTensorMutableData<float>();
+        auto output_shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
+        
+        // Parse the batch output
+        size_t embedding_dim = output_shape[2]; // [batch_size, seq_len, embedding_dim]
+        size_t seq_len = output_shape[1];
+        
+        std::vector<std::vector<float>> batch_embeddings;
+        batch_embeddings.reserve(batch_size);
+        
+        for (size_t i = 0; i < batch_size; ++i) {
+            // Extract [CLS] token embedding (first token) for each sample in the batch
+            size_t offset = i * seq_len * embedding_dim;
+            std::vector<float> embedding(output_data + offset, output_data + offset + embedding_dim);
+            batch_embeddings.push_back(embedding);
+        }
+        
+        // Normalize all embeddings
+        normalizeBatchEmbeddings(batch_embeddings);
+        
+        if (verbose_) {
+            std::cout << "Processed batch of " << batch_size << " texts" << std::endl;
+            std::cout << "Output shape: [" << output_shape[0] << ", " << output_shape[1] << ", " << output_shape[2] << "]" << std::endl;
+            std::cout << "Embedding dimension: " << embedding_dim << std::endl;
+        }
+        
+        return batch_embeddings;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error during batch inference: " << e.what() << std::endl;
+        return {};
+    }
+}

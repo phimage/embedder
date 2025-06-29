@@ -33,9 +33,16 @@ public:
     bool loadTokenizer(const std::string& vocab_path);
     std::vector<float> getEmbedding(const std::string& text);
     
+    // Batch processing methods
+    std::vector<std::vector<float>> getBatchEmbeddings(const std::vector<std::string>& texts);
+    
     // Public tokenizer methods for advanced usage
     std::vector<int> tokenize(const std::string& text);
     std::vector<int> encodeText(const std::string& text);
+    
+    // Batch tokenization methods
+    std::vector<std::vector<int>> batchTokenize(const std::vector<std::string>& texts);
+    std::vector<std::vector<int>> batchEncodeText(const std::vector<std::string>& texts);
     
     // Advanced tokenization options
     void setSpecialTokens(int pad_id, int unk_id, int cls_id, int sep_id);
@@ -47,4 +54,5 @@ private:
     std::vector<std::string> wordpieceTokenize(const std::string& word);
     int getTokenId(const std::string& token);
     void normalizeEmbedding(std::vector<float>& embedding);
+    void normalizeBatchEmbeddings(std::vector<std::vector<float>>& embeddings);
 };
