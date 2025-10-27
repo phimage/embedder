@@ -4,6 +4,9 @@ A generic C++ application for generating text embeddings using ONNX models.
 
 This is just used for testing. It's better to provide a service to do so (that does not load the model each time).
 
+> [!CAUTION]
+> The current results are incorrect — I’m just using this repository for learning purposes.
+
 ## Getting Models
 
 You can download ONNX embedding models from Hugging Face using the `huggingface-cli` tool.
